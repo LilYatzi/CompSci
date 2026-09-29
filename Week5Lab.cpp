@@ -1,29 +1,57 @@
 #include<iostream>
 #include<cmath>
+#include<string>
 
+
+using std::string;
 using std::cout;
+using std::cin;
 using std::endl;
 
-int a_input(int p[2], int p2[2])
+
+int get_abs(int n)
 {
-    return p2[1];
+    if (n < 0)
+    {
+        return -n;
+    }
+    return n;
+}
+
+string reduced_sqrt(int n)
+{
+    int root = static_cast<int>(sqrt(n));
+    if (n/static_cast<double>(root) == static_cast<double>(root))
+    {
+        return std::to_string(root);
+    }
+    int num = n;
+    for(int i = root; i > 1; i--)
+    {
+        int sq = i * i;
+        if (num%sq == 0)
+        {
+            return std::to_string(i) + "√(" + std::to_string(num/sq)+ ")";
+        }
+    }
+    return "√(" + std::to_string(n) +")";
 }
 
 int get_A(int p1[2], int p2[2])
 {
-    int distx = abs(p1[0] - p2[0]);
+    int distx = get_abs(p1[0] - p2[0]);
     distx = distx * distx;
     return distx;
 }
 
 int get_B(int p1[2], int p2[2])
 {
-    int disty = abs(p1[1] - p2[1]);
+    int disty = get_abs(p1[1] - p2[1]);
     disty = disty*disty;
     return disty;
 }
 
-double get_C_Squared(int p1[2], int p2[2])
+int get_C_Squared(int p1[2], int p2[2])
 {
     int a = get_A(p1, p2);
     int b = get_B(p1, p2);
@@ -31,12 +59,18 @@ double get_C_Squared(int p1[2], int p2[2])
     return c_squared;
 }
 
-int main() {
-    int p1[2] = {1,2};
-    int p2[2] = {4,3};
-    int p3[2] = {5, 4};
-    int p4[2] = {1, 1};
+string get_pythag(int p1[2], int p2[2])
+{
+    return reduced_sqrt(get_C_Squared(p1,p2));
+}
 
-    cout << get_C_Squared(p3, p4) << endl;
+int main() {
+    int p1[2];
+    int p2[2];
+    cout << "Please enter first point" << endl;
+    cin >> p1[0] >> p1[1];
+    cout << "Please enter second point" << endl;
+    cin >> p2[0] >> p2[1];
+    cout << "The hypotenuse is: " + get_pythag(p1, p2) + " units in length" << endl;
     return 0;
 }
