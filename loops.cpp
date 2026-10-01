@@ -6,8 +6,8 @@ using std::endl;
 
 int main()
 {
-    
-    for(int i = 0; i <= 100; i++)
+    int i = 0;
+    for(;;)
     {
         if(i%10 == 1 && i != 11)
         {
@@ -17,6 +17,11 @@ int main()
         {
             cout << "This is the: " + std::to_string(i) + "th iteration" << endl;
         }
+        if(i > 100)
+        {
+            break;
+        }
+        i++;
     }
     /*
     for(int i = 0; i<5; i = i+1)

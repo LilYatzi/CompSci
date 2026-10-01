@@ -65,12 +65,16 @@ string get_pythag(int p1[2], int p2[2])
 }
 
 int main() {
-    int p1[2];
-    int p2[2];
-    cout << "Please enter first point" << endl;
-    cin >> p1[0] >> p1[1];
-    cout << "Please enter second point" << endl;
-    cin >> p2[0] >> p2[1];
-    cout << "The hypotenuse is: " + get_pythag(p1, p2) + " units in length" << endl;
+    std::cin.exceptions(std::istream::failbit);
+    for(;;)
+    {
+        int p1[2];
+        int p2[2];
+        cout << "Please enter first point" << endl;
+        cin >> p1[0] >> p1[1];
+        cout << "Please enter second point" << endl;
+        cin >> p2[0] >> p2[1];
+        cout << "The hypotenuse is: " + get_pythag(p1, p2) + " units in length" << endl;
+    }
     return 0;
 }
