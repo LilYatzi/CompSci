@@ -1,6 +1,6 @@
 #include<iostream>
 #include<bitset>
-
+#include<limits>
 
 using std::cout;
 using std::cin;
@@ -23,6 +23,16 @@ const char WHITE_PIECE = 0b11111110;
 const char CLEAN = 0b01111110;
 const char CLEAR_SPOT = 0b10000000;
 
+bool black_king_moved = false;
+bool black_krook_moved = false;
+bool black_qrook_moved = false;
+bool white_king_moved = false;
+bool white_krook_moved = false;
+bool white_qrook_moved = false;
+bool castling = false;
+
+char last_move_double_pawn_move[3] = {0,0,0};
+
 char attempted_move[4];
 
 char steps[5][9][2] = {
@@ -33,7 +43,7 @@ char steps[5][9][2] = {
     {{KING, KING},{1,1},{1,-1},{-1,1},{-1,-1},{0,1},{0,-1},{1,0},{-1,0}}
 };
 
-char black_turn = 0b00000000;
+char white_turn = 0b00000001;
 
 char board[8][8];
 
@@ -79,8 +89,11 @@ void print_board()
     //takes a char[4] do display the board, peice[0] and [3] are square color designators peice[1] is W or B for white and black peice[2] is the peice
     cout<< endl<< endl;
     char peice[4];
+    cout << "      A   B   C   D   E   F   G   H" << endl;
     for(int y = 0; y <= 7; y++)
     {
+        cout << y + 1;
+        cout << "   ";
         for(int x = 0; x <= 7; x++)
         {
             //checks if square is empty, if it isn't it checks the color of the peice
@@ -138,22 +151,144 @@ void print_board()
     }
 }
 
-void move_peice(char fromy, char fromx, char toy, char tox)
+void move_peice(char fromx, char fromy, char tox, char toy)
 {
+    if((board[fromx][fromy]&CLEAN) == KING)
+    {
+        if(!white_turn)
+        {
+            black_king_moved = true;
+        }
+        else
+        {
+            white_king_moved = true;
+        }
+    }
+    if((board[fromx][fromy]&CLEAN) == ROOK)
+    {
+        if(fromx == 0)
+        {
+            if(!white_turn)
+            {
+                black_qrook_moved = true;
+            }
+            else
+            {
+                white_qrook_moved = true;
+            }
+        }
+        if(fromx == 7)
+        {
+            if(!white_turn)
+            {
+                black_krook_moved = true;
+            }
+            else
+            {
+                white_krook_moved = true;
+            }
+        }
+    }
     board[toy][tox] &= CLEAR_SPOT;
     board[toy][tox] |= (board[fromy][fromx] & ~(CLEAR_SPOT));
     board[fromy][fromx] &= CLEAR_SPOT;
 }
 
-int read_attempted_move(char move[])
+bool try_castle(bool white_black, bool long_short)
+{
+    if(white_black)
+    {
+        if(long_short)
+        {
+            if(!white_king_moved && !white_qrook_moved)
+            {
+                if(board[7][0] == ROOK && (board[7][1]&CLEAN) == 0 && (board[7][2]&CLEAN) == 0 && (board[7][3]&CLEAN) == 0)
+                {
+                    move_peice(0,7,2,7);
+                    move_peice(4,7,1,7);
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            if(!white_king_moved && !white_krook_moved)
+            {
+                if((board[7][7]&~(EMPTY_BLACK)) == ROOK && (board[7][6]&CLEAN) == 0 && (board[7][5]&CLEAN) == 0)
+                {
+                    move_peice(7,7,5,7);
+                    move_peice(4,7,6,7);
+                    return true;
+                }
+            }
+        }
+    }
+    else
+    {
+        if(long_short)
+        {
+            if(!black_king_moved && !black_qrook_moved)
+            {
+                if((board[0][0]&~(EMPTY_BLACK)) == (ROOK|BLACK_PIECE) && (board[0][1]&CLEAN) == 0 && (board[0][2]&CLEAN) == 0 && (board[0][3]&CLEAN) == 0)
+                {
+                    move_peice(0,0,2,0);
+                    move_peice(4,0,1,0);
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            if(!black_king_moved && !black_krook_moved)
+            {
+                if(board[0][7] == (ROOK|BLACK_PIECE) && (board[0][6]&CLEAN) == 0 && (board[0][5]&CLEAN) == 0)
+                {
+                    move_peice(7,0,5,0);
+                    move_peice(4,0,6,0);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool read_attempted_move(char move[])
 {
     for(int i = 0; i < 4; i++)
     {
         attempted_move[i] = 0;
     }
+    if(move[0] == 'O' && move[1] == 'O')
+    {
+        if(move[2] == 'O')
+        {
+            if(try_castle(white_turn, 1))
+            {
+                castling = true;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if(try_castle(white_turn, 0))
+            {
+                castling = true;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
     if(move[0] >= 65 && move[0] <=72)
     {
-        attempted_move[0] = move[0]-65;
+        attempted_move[0] = (move[0]-65);
     }
     else
     {
@@ -161,7 +296,7 @@ int read_attempted_move(char move[])
     }
     if(move[1] >= 49 && move[1] <= 56)
     {
-        attempted_move[1] = move[1]-49;
+        attempted_move[1] = (move[1]-49);
     }
     else
     {
@@ -169,7 +304,7 @@ int read_attempted_move(char move[])
     }
     if(move[2] >= 65 && move[2] <=72)
     {
-        attempted_move[2] = move[2]-65;
+        attempted_move[2] = (move[2]-65);
     }
     else
     {
@@ -177,41 +312,105 @@ int read_attempted_move(char move[])
     }
     if(move[3] >= 49 && move[3] <= 56)
     {
-        attempted_move[3] = move[3]-49;
+        attempted_move[3] = (move[3]-49);
     }
     else
     {
         return 0;
     }
+
     return 1;
 }
 
-bool valid_pawn_move()
+bool valid_pawn_move(int x1, int y1, int x2, int y2)
 {
+    bool forwardmove = false;
+    bool kill = false;
+    bool can_double = false;
+    if(y1 == 6 && (board[y1][x1] & BLACK_PIECE) != BLACK_PIECE)
+    {
+        can_double = true;
+    }
+    if(y1 == 1 && (board[y1][x1] & BLACK_PIECE) == BLACK_PIECE)
+    {
+        can_double = true;
+    }
+    if(x1 == x2)
+    {
+        forwardmove = true;
+    }
+    else if(abs(y2-y1) == 1 && abs(x1-x2) == 1)
+    {
+        kill = true;
+    }
+    else
+    {
+        return false;
+    }
+    if(forwardmove)
+    {
+        int viable_move = ((board[y1][x1] & BLACK_PIECE) == BLACK_PIECE) ? 1 : -1;
+        if(y2-y1 == viable_move && (board[y2][x2]&CLEAN) == 0)
+        {
+            return true;
+        }
+        else if(y2-y1 == viable_move*(2*can_double) && (board[y2][x2]&CLEAN) == 0 && (board[y1+viable_move][x1]&CLEAN) == 0)
+        {
+            last_move_double_pawn_move[0] = y2;
+            last_move_double_pawn_move[1] = x2;
+            last_move_double_pawn_move[2] = white_turn;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    if(kill)
+    {
+        int viable_move = ((board[y1][x1] & BLACK_PIECE) == BLACK_PIECE) ? 1 : -1;
+        if(y2-y1 == viable_move && (board[y2][x2]&CLEAN) != 0 && (board[y1][x1] & BLACK_PIECE) != (board[y2][x2] & BLACK_PIECE))
+        {
+            return true;
+        }
+        else if(last_move_double_pawn_move[0] != 0)
+        {
+            if(y2-y1 == viable_move && x2 == last_move_double_pawn_move[1] && (board[y1][x1] & BLACK_PIECE) != (board[last_move_double_pawn_move[0]][last_move_double_pawn_move[1]] & BLACK_PIECE) && y1 == last_move_double_pawn_move[0])
+            {
+                board[last_move_double_pawn_move[0]][last_move_double_pawn_move[1]] &= CLEAR_SPOT;
+                return true;
+            }
+        }
+    }
     return false;
 }
-
+//working on this
 bool check_move_valid()
 {
-    char x1 = attempted_move[0];
-    char y1 = attempted_move[1];
-    char x2 = attempted_move[2];
-    char y2 = attempted_move[3];
-    /*for(int i = 0; i < 4; i++)
+    int x1 = attempted_move[0];
+    int y1 = attempted_move[1];
+    int x2 = attempted_move[2];
+    int y2 = attempted_move[3];
+
+    if(x1 == x2 && y1 == y2)
     {
-        cout << int(attempted_move[i]) << endl;
-    }*/
-    //char peice = (board[y1][x1]&CLEAN);
-    if (((board[y1][x1] & BLACK_PIECE) == black_turn))
+        cout << "Moving to the same square?" << endl;
+        return false;
+    }
+
+    //checks if the peice color matches the players turn
+    if (((board[y1][x1] & BLACK_PIECE) == white_turn))
     {
-        cout << std::bitset<8>(board[y1][x1]) << endl;
-        cout << std::bitset<8>((board[y1][x1] & BLACK_PIECE)) << endl;
-        cout << std::bitset<8>(black_turn) << endl;
         cout << "Not your turn" << endl;
         return false;
     }
-    
+
+
+    char peice = static_cast<char>(board[y1][x1] & CLEAN);
     char p_index;
+
+    //iterates through steps array to find the right piece, pawn moves done in a different method because they are a pain
     for(int i = 0; i < 6; i++)
     {
         if(steps[i][0][0] == peice)
@@ -223,38 +422,159 @@ bool check_move_valid()
         {
             if(peice == PAWN)
             {
-                return valid_pawn_move();
+                return valid_pawn_move(x1,y1,x2,y2);
             }
             cout << "No peice on that tile" << endl;
             return false;
         }
     }
+
+    //in the for loop, we will iterate over every 'step' in the step array, and iterate over each square that it would encompass, if it's blocked or out of bounds, we move on to the next step. The function returns true if x1+step*i == x2(same for y).
     for(int i = 1; i < 9; i++)
     {
-        //if()
+        for(int n = 1; n <= abs(abs(steps[p_index][i][0])+abs(steps[p_index][i][1])); n++)
+        {
+            int xmove;
+            int ymove;
+            //need to step by one, but needed to include range in steps[], so a range of 7 in one direction would be [7,0], to turn this into one or 0 for the formula x1+step*n we static cast a bool into an int. if the step is 0 it remains 0 otherwise it becomes 1
+            if(peice != KNIGHT)
+            {
+                xmove = (steps[p_index][i][0] < 0) ? -static_cast<int>(steps[p_index][i][0] != 0) : static_cast<int>(steps[p_index][i][0] != 0);
+                ymove = (steps[p_index][i][1] < 0) ? -static_cast<int>(steps[p_index][i][1] != 0) : static_cast<int>(steps[p_index][i][1] != 0);
+            }
+            else
+            {
+                xmove=steps[p_index][i][0];
+                ymove=steps[p_index][i][1];
+            }
+            int newx = x1+xmove*n;
+            int newy = y1+ymove*n;
+            if(newx == x2 && newy == y2)
+            {
+                if((board[y2][x2]&CLEAN) == 0)
+                {
+                    return true;
+                }
+                else if((board[y2][x2]&BLACK_PIECE) != (board[y1][x1]&BLACK_PIECE))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            if(peice == KNIGHT)
+            {
+                break;
+            }
+            if(newx < 0 || newx > 7)
+            {
+                break;
+            }
+            if(newy < 0 || newy > 7)
+            {
+                break;
+            }
+            if((board[newy][newx]&CLEAN) != 0)
+            {
+                break;
+            }
+        }
+    }
+   return false;
+}
+
+void check_promotion()
+{
+    if(attempted_move[3] == 0 || attempted_move[3] == 7)
+    {
+        if((board[attempted_move[3]][attempted_move[2]]&CLEAN) == PAWN)
+        {
+            char peice;
+            for(;;)
+            {
+                char c;
+                cin >> c;
+                switch(c)
+                {
+                    case 'N':
+                    peice = KNIGHT;
+                    break;
+                    case 'R':
+                    peice = ROOK;
+                    break;
+                    case 'Q':
+                    peice = QUEEN;
+                    break;
+                    case 'B':
+                    peice = BISHOP;
+                    break;
+                    default:
+                    continue;
+                }
+                break;
+            }
+            board[attempted_move[3]][attempted_move[2]] &= ~(CLEAN);
+            board[attempted_move[3]][attempted_move[2]] |= peice;
+        }
     }
 }
 
-
+void handle_moves()
+{
+    for(;;)
+    {
+        print_board();
+        char c[5]= {0,0,0,0,0};
+        cin.get(c, 5);
+        cin.ignore();
+        if(read_attempted_move(c))
+        {
+            cout<< "Good input" << endl;
+            if(castling)
+            {
+                castling = false;
+                white_turn ^= (1 << 0);
+                continue;
+            }
+            bool m = check_move_valid();
+            if(m)
+            {
+                cout << "VALID MOVE DETECTED" << endl;
+                move_peice(attempted_move[0],attempted_move[1],attempted_move[2],attempted_move[3]);
+                check_promotion();
+                white_turn ^= (1 << 0);
+                if(last_move_double_pawn_move[2] == white_turn)
+                {
+                    last_move_double_pawn_move[0] == 0;
+                    last_move_double_pawn_move[1] == 0;
+                }
+            }
+            else
+            {
+                cout << "MOVE NOT VALID" << endl;
+            }
+            cout << m << endl;
+        }
+        else
+        {
+            cout<< "Bad input" << endl;
+            cin.clear();
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            cin.ignore();
+        }
+    }
+}
 
 int main()
 {
     set_board();
     print_board();
     cout << std::bitset<8>(steps[1][0][1]) << endl;
-    for(int i = 0; i < 5; i++)
+    move_peice(0,6,0,1);
+    for(;;)
     {
-        char c[4]= {0,0,0,0};
-        cin.get(c, 5);
-        cin.ignore();
-        if(read_attempted_move(c))
-        {
-            cout<< "Good input" << endl;
-            cout << check_move_valid() << endl;
-        }
-        else
-        {
-            cout<< "Bad input" << endl;
-        }
+        handle_moves();
     }
 }
