@@ -1,7 +1,9 @@
 #include <iostream>
+#include <bitset>
+
 
 int main(){
-
-    std::cout << "Hello World" << std::endl;
+    char c = (1<<0);
+    std::cout << std::bitset<8>(c) << std::endl;
     return 0;
 }

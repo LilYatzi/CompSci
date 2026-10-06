@@ -567,12 +567,181 @@ void handle_moves()
     }
 }
 
+bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky)
+{
+    char p = (peice&CLEAN);
+    switch(p)
+    {
+        case KING:
+
+            {if(abs(py - ky) <=1 && abs(px - kx) <= 1)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;}
+
+
+        case QUEEN:
+
+            {if(abs(py - ky) == abs(px-kx))
+            {
+                char xmove = (kx-px) ? (kx-px)/abs(px-kx) : 0;
+                char ymove = (ky-py) ? (ky-py)/abs(py-ky) : 0;
+                for(int i = 1; i < abs(py-ky); i++)
+                {
+                    if((board[py+ymove*i]&(1 << px+xmove*i)))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else if(abs(py-ky) == 0 || abs(px-kx) == 0)
+            {
+                char xmove = abs(kx-px) ? (kx-px)/abs(kx-px) : 0;
+                char ymove = abs(ky-py) ? (ky-py)/abs(ky-py) : 0;
+
+                for(int i = 0; i < abs(py-ky)+abs(px-kx); i++)
+                {
+                    if(board[py+(ymove*i)]&(1 <<(px+xmove*i)))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;}
+
+
+        case ROOK:
+
+            {if(abs(py-ky) == 0 || abs(px-kx) == 0)
+            {
+                char xmove = abs(kx-px) ? (kx-px)/abs(kx-px) : 0;
+                char ymove = abs(ky-py) ? (ky-py)/abs(ky-py) : 0;
+
+                for(int i = 0; i < abs(py-ky)+abs(px-kx); i++)
+                {
+                    if(board[py+(ymove*i)]&(1 <<(px+xmove*i)))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;}
+
+
+        case KNIGHT:
+
+            {if(abs(py-ky) + abs(px-kx) == 3 && abs(abs(py-ky) - abs(px-kx)) == 1)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;}
+
+
+        case BISHOP:
+            {if(abs(py - ky) == abs(px - kx))
+            {
+                char xmove = (kx-px) ? (kx-px)/abs(px-kx) : 0;
+                char ymove = (ky-py) ? (ky-py)/abs(py-ky) : 0;
+                for(int i = 1; i < abs(py-ky); i++)
+                {
+                    if((board[py+ymove*i]&(1 << px+xmove*i)))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+        break;}
+
+
+        case PAWN:
+            {char color = (peice&BLACK_PIECE) ? -1 : 1;
+            if((ky-py) == color and abs(px-kx) == 1)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;}
+            
+    }
+    cout << "NOT A PEICE? SOMETHING BIG WRONG" << endl;
+    return false;
+
+}
+
+bool check4check(char color_to_check, char sim_board[8][8])
+{
+    char simple_board[8];
+    char king_loc[2];
+    for(int y = 0; y < 8; y++)
+    {
+        for(int x = 0; x < 8; x++)
+        {
+            char peice = (sim_board[y][x]);
+            if((peice&BLACK_PIECE) == color_to_check)
+            {
+                simple_board[y] |= (1 << x);
+                if((peice&CLEAN) == KING)
+                {
+                    king_loc[0] = x;
+                    king_loc[1] = y;
+                }
+            }
+        }
+    }
+    for(int y = 0; y < 8; y++)
+    {
+        for(int x = 0; x < 8; x++)
+        {
+            char peice = (sim_board[y][x]);
+            if((peice&BLACK_PIECE) != color_to_check && (peice&CLEAN) != 0)
+            {
+                if(peice_can_see(simple_board, peice, x, y, king_loc[0], king_loc[1]))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 int main()
 {
     set_board();
     print_board();
     cout << std::bitset<8>(steps[1][0][1]) << endl;
-    move_peice(0,6,0,1);
+    move_peice(3,1,4,5);
+    move_peice(3,7,0,4);
+    cout << check4check(BLACK_PIECE,board) << endl;
     for(;;)
     {
         handle_moves();
