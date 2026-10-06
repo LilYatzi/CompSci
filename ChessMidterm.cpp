@@ -23,6 +23,7 @@ const char WHITE_PIECE = 0b11111110;
 const char CLEAN = 0b01111110;
 const char CLEAR_SPOT = 0b10000000;
 
+
 bool black_king_moved = false;
 bool black_krook_moved = false;
 bool black_qrook_moved = false;
@@ -34,6 +35,10 @@ bool castling = false;
 char last_move_double_pawn_move[3] = {0,0,0};
 
 char attempted_move[4];
+
+char checking_p[2];
+char checked_king[2];
+bool checking_for_mate = false;
 
 char steps[5][9][2] = {
     {{ROOK,ROOK},{7,0},{-7,0},{0,7},{0,-7},{0,0},{0,0},{0,0},{0,0}},
@@ -51,7 +56,7 @@ char starting_peices[8] = {ROOK,KNIGHT,BISHOP,QUEEN,KING,BISHOP,KNIGHT,ROOK};
 
 void set_board()
 {
-    bool black = 1;
+    bool black = 0;
     for(int y = 0; y <= 7; y++)
     {
         for(int x = 0; x <= 7; x++)
@@ -89,10 +94,9 @@ void print_board()
     //takes a char[4] do display the board, peice[0] and [3] are square color designators peice[1] is W or B for white and black peice[2] is the peice
     cout<< endl<< endl;
     char peice[4];
-    cout << "      A   B   C   D   E   F   G   H" << endl;
     for(int y = 0; y <= 7; y++)
     {
-        cout << y + 1;
+        cout << 8 - y;
         cout << "   ";
         for(int x = 0; x <= 7; x++)
         {
@@ -149,6 +153,7 @@ void print_board()
         }
         cout << endl;
     }
+    cout << "      A   B   C   D   E   F   G   H" << endl;
 }
 
 void move_peice(char fromx, char fromy, char tox, char toy)
@@ -241,7 +246,7 @@ bool try_castle(bool white_black, bool long_short)
         {
             if(!black_king_moved && !black_krook_moved)
             {
-                if(board[0][7] == (ROOK|BLACK_PIECE) && (board[0][6]&CLEAN) == 0 && (board[0][5]&CLEAN) == 0)
+                if((board[0][7]&~(CLEAR_SPOT)) == (ROOK|BLACK_PIECE) && (board[0][6]&CLEAN) == 0 && (board[0][5]&CLEAN) == 0)
                 {
                     move_peice(7,0,5,0);
                     move_peice(4,0,6,0);
@@ -296,7 +301,7 @@ bool read_attempted_move(char move[])
     }
     if(move[1] >= 49 && move[1] <= 56)
     {
-        attempted_move[1] = (move[1]-49);
+        attempted_move[1] = 7-(move[1]-49);
     }
     else
     {
@@ -312,7 +317,7 @@ bool read_attempted_move(char move[])
     }
     if(move[3] >= 49 && move[3] <= 56)
     {
-        attempted_move[3] = (move[3]-49);
+        attempted_move[3] = 7-(move[3]-49);
     }
     else
     {
@@ -385,14 +390,9 @@ bool valid_pawn_move(int x1, int y1, int x2, int y2)
     }
     return false;
 }
-//working on this
-bool check_move_valid()
-{
-    int x1 = attempted_move[0];
-    int y1 = attempted_move[1];
-    int x2 = attempted_move[2];
-    int y2 = attempted_move[3];
 
+bool check_move_valid(char x1, char y1, char x2, char y2)
+{
     if(x1 == x2 && y1 == y2)
     {
         cout << "Moving to the same square?" << endl;
@@ -400,7 +400,7 @@ bool check_move_valid()
     }
 
     //checks if the peice color matches the players turn
-    if (((board[y1][x1] & BLACK_PIECE) == white_turn))
+    if (((board[y1][x1] & BLACK_PIECE) == white_turn) && !checking_for_mate)
     {
         cout << "Not your turn" << endl;
         return false;
@@ -521,52 +521,6 @@ void check_promotion()
     }
 }
 
-void handle_moves()
-{
-    for(;;)
-    {
-        print_board();
-        char c[5]= {0,0,0,0,0};
-        cin.get(c, 5);
-        cin.ignore();
-        if(read_attempted_move(c))
-        {
-            cout<< "Good input" << endl;
-            if(castling)
-            {
-                castling = false;
-                white_turn ^= (1 << 0);
-                continue;
-            }
-            bool m = check_move_valid();
-            if(m)
-            {
-                cout << "VALID MOVE DETECTED" << endl;
-                move_peice(attempted_move[0],attempted_move[1],attempted_move[2],attempted_move[3]);
-                check_promotion();
-                white_turn ^= (1 << 0);
-                if(last_move_double_pawn_move[2] == white_turn)
-                {
-                    last_move_double_pawn_move[0] == 0;
-                    last_move_double_pawn_move[1] == 0;
-                }
-            }
-            else
-            {
-                cout << "MOVE NOT VALID" << endl;
-            }
-            cout << m << endl;
-        }
-        else
-        {
-            cout<< "Bad input" << endl;
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            cin.ignore();
-        }
-    }
-}
-
 bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky)
 {
     char p = (peice&CLEAN);
@@ -593,7 +547,7 @@ bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky
                 char ymove = (ky-py) ? (ky-py)/abs(py-ky) : 0;
                 for(int i = 1; i < abs(py-ky); i++)
                 {
-                    if((board[py+ymove*i]&(1 << px+xmove*i)))
+                    if((board[py+ymove*i]&(1 << 7-(px+xmove*i))))
                     {
                         return false;
                     }
@@ -607,7 +561,7 @@ bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky
 
                 for(int i = 0; i < abs(py-ky)+abs(px-kx); i++)
                 {
-                    if(board[py+(ymove*i)]&(1 <<(px+xmove*i)))
+                    if(board[py+(ymove*i)]&(1 <<(7-(px+xmove*i))))
                     {
                         return false;
                     }
@@ -630,7 +584,7 @@ bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky
 
                 for(int i = 0; i < abs(py-ky)+abs(px-kx); i++)
                 {
-                    if(board[py+(ymove*i)]&(1 <<(px+xmove*i)))
+                    if(board[py+(ymove*i)]&(1 <<(7-(px+xmove*i))))
                     {
                         return false;
                     }
@@ -664,7 +618,7 @@ bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky
                 char ymove = (ky-py) ? (ky-py)/abs(py-ky) : 0;
                 for(int i = 1; i < abs(py-ky); i++)
                 {
-                    if((board[py+ymove*i]&(1 << px+xmove*i)))
+                    if((board[py+ymove*i]&(1 << 7-(px+xmove*i))))
                     {
                         return false;
                     }
@@ -699,16 +653,16 @@ bool peice_can_see(char board[8], char peice, char px, char py, char kx, char ky
 
 bool check4check(char color_to_check, char sim_board[8][8])
 {
-    char simple_board[8];
+    char simple_board[8] = {0,0,0,0,0,0,0,0};
     char king_loc[2];
     for(int y = 0; y < 8; y++)
     {
         for(int x = 0; x < 8; x++)
         {
             char peice = (sim_board[y][x]);
-            if((peice&BLACK_PIECE) == color_to_check)
+            if((peice&BLACK_PIECE) == color_to_check && (peice&CLEAN) != 0)
             {
-                simple_board[y] |= (1 << x);
+                simple_board[y] |= (1 << 7-x);
                 if((peice&CLEAN) == KING)
                 {
                     king_loc[0] = x;
@@ -717,6 +671,10 @@ bool check4check(char color_to_check, char sim_board[8][8])
             }
         }
     }
+    /*for(int i  = 0; i < 8; i++)
+    {
+        cout << std::bitset<8>(simple_board[i]) << endl;
+    }*/
     for(int y = 0; y < 8; y++)
     {
         for(int x = 0; x < 8; x++)
@@ -726,6 +684,10 @@ bool check4check(char color_to_check, char sim_board[8][8])
             {
                 if(peice_can_see(simple_board, peice, x, y, king_loc[0], king_loc[1]))
                 {
+                    checking_p[0] = x;
+                    checking_p[1] = y;
+                    checked_king[0] = king_loc[0];
+                    checked_king[1] = king_loc[1];
                     return true;
                 }
             }
@@ -734,14 +696,144 @@ bool check4check(char color_to_check, char sim_board[8][8])
     return false;
 }
 
+bool would_check(char who_turn, char x1, char y1, char x2, char y2)
+{
+    char board_copy[8][8];
+    for(int y = 0; y < 8; y++)
+    {
+        for(int x = 0; x < 8; x++)
+        {
+            board_copy[y][x] = board[y][x];
+        }
+    }
+    board_copy[y2][x2] &= CLEAR_SPOT;
+    board_copy[y2][x2] |= (board_copy[y1][x1]&~(CLEAR_SPOT));
+    board_copy[y1][x1] &= CLEAR_SPOT;
+    return check4check(who_turn, board_copy);
+}
+
+bool check4checkmate(char color_to_check)
+{
+    //king move?
+    for(int n = 1; n < 10; n++)
+    {
+        if(check_move_valid(checked_king[0],checked_king[1],steps[4][n][0],steps[4][n][1]) && !would_check(color_to_check,checked_king[0],checked_king[1],steps[4][n][0],steps[4][n][1]))
+        {
+            return false;
+        }
+    }
+    //can kill?
+    for(int y = 0; y < 7; y++)
+    {
+        for(int x = 0; x < 7; x++)
+        {
+            if((board[y][x]&BLACK_PIECE) == color_to_check)
+            {
+                if(check_move_valid(x,y,checking_p[0],checking_p[1]) && !would_check(color_to_check,x,y,checking_p[0],checking_p[1]))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    //can block?
+    char step[2];
+    char num_steps;
+    if(abs(checking_p[0] - checked_king[0]) == abs(checking_p[0] - checked_king[0]) && abs(checking_p[0] - checked_king[0]) > 1)
+    {
+        step[0] = (checked_king[0]-checking_p[0])/abs(checked_king[0]-checking_p[0]);
+        step[1] = (checked_king[1]-checking_p[1])/abs(checked_king[1]-checking_p[0]);
+        num_steps = abs(checking_p[0] - checked_king[0]);
+    }
+    else if(abs(checking_p[0]-checked_king[0])== 0 || abs(checking_p[1]-checked_king[1]) == 0 && abs(checking_p[0]-checked_king[0])+abs(checking_p[1]-checked_king[1]) > 1)
+    {
+        step[0] = (abs(checking_p[0]-checked_king[0]) != 0) ? (checked_king[0]-checking_p[0])/abs(checked_king[0]-checking_p[0]) : 0;
+        step[1] = (abs(checking_p[1]-checked_king[1]) != 0) ? (checked_king[1]-checking_p[1])/abs(checked_king[1]-checking_p[1]) : 0;
+        num_steps = abs(checking_p[0]-checked_king[0])+abs(checking_p[1]-checked_king[1]);
+    }
+    else
+    {
+        return true;
+    }
+    for(int i = 0; i < num_steps; i++)
+    {
+        for(int y = 0; y < 7; y++)
+        {
+            for(int x = 0; x < 7; x++)
+            {
+                if((board[y][x]&BLACK_PIECE) == color_to_check)
+                {
+                    if(check_move_valid(x, y, (checking_p[0] + step[0]*i), (checking_p[1] + step[1]*i)) && !would_check(color_to_check,x, y, (checking_p[0] + step[0]*i), (checking_p[1] + step[1]*i)))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+void handle_moves()
+{
+    for(;;)
+    {
+        print_board();
+        char c[5]= {0,0,0,0,0};
+        cin.get(c, 5);
+        cin.ignore();
+        if(read_attempted_move(c))
+        {
+            cout<< "Good input" << endl;
+            if(castling)
+            {
+                castling = false;
+                white_turn ^= (1 << 0);
+                continue;
+            }
+            bool m = check_move_valid(attempted_move[0],attempted_move[1],attempted_move[2],attempted_move[3]);
+            if(m && !would_check(((~(white_turn))&BLACK_PIECE),attempted_move[0],attempted_move[1],attempted_move[2],attempted_move[3]))
+            {
+                cout << "VALID MOVE DETECTED" << endl;
+                move_peice(attempted_move[0],attempted_move[1],attempted_move[2],attempted_move[3]);
+                check_promotion();
+                if(check4check(white_turn,board))
+                {
+                    cout << "CHECK";
+                    checking_for_mate = true;
+                    if(check4checkmate(white_turn))
+                    {
+                        cout << "CHECKMATE! GAME OVER!";
+                    }
+                    checking_for_mate = false;
+                }
+                white_turn ^= (1 << 0);
+                if(last_move_double_pawn_move[2] == white_turn)
+                {
+                    last_move_double_pawn_move[0] == 0;
+                    last_move_double_pawn_move[1] == 0;
+                }
+            }
+            else
+            {
+                cout << "MOVE NOT VALID" << endl;
+            }
+            //cout << m << endl;
+        }
+        else
+        {
+            cout<< "Bad input" << endl;
+            cin.clear();
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+    }
+}
+
+
 int main()
 {
     set_board();
     print_board();
-    cout << std::bitset<8>(steps[1][0][1]) << endl;
-    move_peice(3,1,4,5);
-    move_peice(3,7,0,4);
-    cout << check4check(BLACK_PIECE,board) << endl;
     for(;;)
     {
         handle_moves();
