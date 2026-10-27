@@ -660,7 +660,7 @@ bool check4check(char color_to_check, char sim_board[8][8])
         for(int x = 0; x < 8; x++)
         {
             char peice = (sim_board[y][x]);
-            if((peice&BLACK_PIECE) == color_to_check && (peice&CLEAN) != 0)
+            if((peice&CLEAN) != 0)
             {
                 simple_board[y] |= (1 << 7-x);
                 if((peice&CLEAN) == KING)
